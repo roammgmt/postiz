@@ -42,6 +42,23 @@ domain `social.roam…` with TLS; set env from `roam/.env.example`.
 **VPS / Coolify:** `cp roam/.env.example roam/.env && $EDITOR roam/.env && docker
 compose -f roam/docker-compose.yml up -d`, front with the reverse proxy's TLS.
 
+### Runtime troubleshooting (Railway)
+
+- **`Killed` + `exit code 137` in a restart loop (OOM).** The all-in-one image
+  runs frontend + backend + orchestrator + workers in one container; each pm2 app
+  gets SIGKILLed when the container exceeds its memory cap. Fix: raise the service
+  memory to **≥ 2 GB (4 GB recommended)** — Railway → service → Settings →
+  Resources. (The build alone uses a 4 GB heap.) The `node_modules missing` WARN
+  that follows each kill is pnpm workspace hoisting, not the cause. Memory can't
+  be set from `railway.toml`; it's a dashboard/plan setting.
+- **`tcp connect error, 127.0.0.1:7233 … ConnectionRefused` (Temporal).** The app
+  image does **not** bundle Temporal — it's a separate service (see the stack
+  table). Stand up a `temporalio/auto-setup` service (+ its own Postgres) and set
+  **`TEMPORAL_ADDRESS`** on the app service to its internal host, e.g.
+  `temporal.railway.internal:7233`. The orchestrator boots fine while Temporal is
+  down (it logs the error and continues), so this doesn't crash-loop the app — but
+  scheduled posts won't fire until it connects.
+
 ## Reskin (make it look like ROAM) — IMPLEMENTED
 
 Principle: a **thin, additive** overlay so upstream releases still merge cleanly.
