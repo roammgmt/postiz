@@ -1,0 +1,61 @@
+/* Outpost · Social — ROAM brand overlay.
+ * ------------------------------------------------------------------
+ * Additive reskin: overrides Postiz's brand CSS variables with ROAM values.
+ * Imported right after colors.scss in global.scss so these win the cascade.
+ * Keep ALL brand values here so an upstream merge never scatters edits.
+ * Source of truth: ROAM tokens in the ecosystem (src/styles/tokens.css).
+ *
+ * Strategy: Postiz's brand is one purple family (forth / btn-primary / seventh)
+ * plus a pink AI accent. We remap the purple → ROAM gold (CTA) and the pink →
+ * ROAM teal (accent), and swap the light-mode purple chrome → ROAM forest.
+ * Neutral surfaces are left intact (a clean dark admin tool); forest surface
+ * tinting can be layered later once validated on the live build. */
+
+/* ROAM fonts — self-hosted (AGPL public fork, no external font CDN). */
+@font-face {
+  font-family: 'DM Sans';
+  src: url('/fonts/DMSans-VariableFont_opsz_wght.ttf') format('truetype-variations');
+  font-weight: 100 1000;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Playfair Display';
+  src: url('/fonts/PlayfairDisplay-VariableFont_wght.ttf') format('truetype-variations');
+  font-weight: 400 900;
+  font-display: swap;
+}
+
+:root {
+  --roam-gold: #c6975b;
+  --roam-gold-active: #b8893f;
+  --roam-teal: #5b8fa8;
+  --roam-forest: #1b2b27;
+
+  .dark {
+    /* purple brand family → ROAM gold */
+    --color-forth: var(--roam-gold);
+    --color-seventh: var(--roam-gold-active);
+    --new-btn-primary: var(--roam-gold);
+    /* pink AI accent → ROAM teal */
+    --new-ai-btn: var(--roam-teal);
+    /* focused nav / active item ink → gold */
+    --new-textItemFocused: var(--roam-gold);
+  }
+
+  .light {
+    --color-forth: var(--roam-gold);
+    --color-seventh: var(--roam-gold-active);
+    --new-btn-primary: var(--roam-gold);
+    --new-ai-btn: var(--roam-teal);
+    /* light-mode purple chrome → ROAM forest / warm neutrals */
+    --new-back-drop: var(--roam-forest);
+    --new-textItemFocused: var(--roam-forest);
+    --new-boxFocused: #edf3f1;
+    --popup-color: rgba(27, 43, 39, 0.2);
+  }
+}
+
+/* Brand type: DM Sans everywhere, Playfair for large display headings. */
+body {
+  font-family: 'DM Sans', 'Helvetica Neue', system-ui, -apple-system, sans-serif;
+}

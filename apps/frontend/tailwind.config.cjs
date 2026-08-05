@@ -122,7 +122,9 @@ module.exports = {
         loginBg: 'url(/auth/bg-login.png)',
       },
       fontFamily: {
-        sans: ['Helvetica Neue'],
+        // ROAM brand type — DM Sans (body), Playfair Display (display headings).
+        sans: ['DM Sans', 'Helvetica Neue', 'system-ui', 'sans-serif'],
+        display: ['Playfair Display', 'Georgia', 'serif'],
       },
       animation: {
         fade: 'fadeOut 0.5s ease-in-out',
