@@ -76,9 +76,19 @@ The running Railway service uses the stock `ghcr.io/gitroomhq/postiz-app` image,
 it does NOT show the reskin. To ship the ROAM build, either:
 
 **Option A — Railway builds from this fork (simplest).** In the Railway service:
-Settings → Source → connect the **`roammgmt/postiz`** repo; Settings → Build →
-Builder = **Dockerfile**, Dockerfile Path = **`Dockerfile.dev`**. Railway then builds
-the reskinned image on every push. Keep the existing env vars.
+Settings → Source → connect the **`roammgmt/postiz`** repo. The root
+**`railway.toml`** already pins the builder to **Dockerfile** (`Dockerfile.dev`),
+so no manual Build setting is needed — Railway builds the reskinned image on every
+push. Keep the existing env vars.
+
+> ⚠️ If the container crash-loops with `Cannot find module '/app/index.js'`
+> (`MODULE_NOT_FOUND`), Railway is using **Nixpacks**, not the Dockerfile —
+> Nixpacks guesses `node index.js`, which doesn't exist in this monorepo. Ensure
+> `railway.toml` is present (it pins `builder = "dockerfile"`) and clear any manual
+> **Start Command** under Settings → Deploy so the Dockerfile's
+> `nginx && pnpm run pm2` CMD runs. Also confirm no volume is mounted at `/app`
+> (it would shadow the image); mount persistent storage on the uploads path, not
+> the app root.
 
 **Option B — publish an image, then swap Railway's image field.** Edit
 `.github/workflows/build-containers.yml` to push to `ghcr.io/roammgmt/postiz-app`

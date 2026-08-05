@@ -1,3 +1,19 @@
-[phases.setup]
-    nixPkgs = ['nodejs', 'python3']
-    aptPkgs = ['build-essential', 'libudev-dev']
+# Railway build/deploy config for the ROAM "Outpost · Social" Postiz fork.
+#
+# Build the real Postiz image from Dockerfile.dev — its CMD launches nginx + pm2
+# (frontend + backend + workers together). This MUST be a Dockerfile build.
+#
+# Why this file exists / what it fixes: with no `[build] builder`, Railway falls
+# back to its Nixpacks builder, which builds the pnpm monorepo and then guesses a
+# generic start command (`node index.js`). There is no `/app/index.js` here, so
+# the container crash-loops with `Cannot find module '/app/index.js'`
+# (MODULE_NOT_FOUND). Pinning the Dockerfile builder runs the correct entrypoint.
+[build]
+builder = "dockerfile"
+dockerfilePath = "Dockerfile.dev"
+
+# Postiz is a scheduler — it must stay up. Restart on crash, but cap retries so a
+# genuinely broken deploy surfaces instead of looping forever.
+[deploy]
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 5
