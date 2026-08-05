@@ -1,0 +1,114 @@
+# Outpost · Social — self-hosted Postiz (production stack)
+# ------------------------------------------------------------------
+# Runs Postiz standalone ("stands beside" the ROAM ecosystem). The ecosystem
+# embeds its reskinned UI and drives it via the Public API.
+#
+# TRIMMED production stack: upstream's compose ships extra dev/ops services we
+# don't need in production and that cost real memory:
+#   - elasticsearch  (Temporal advanced visibility — we use Postgres visibility)
+#   - temporal-ui / temporal-admin-tools  (operator consoles)
+#   - spotlight      (Sentry dev inspector)
+# Add them back locally if you're debugging Temporal.
+#
+# VPS / Coolify: deploys as-is. Railway: one service per block (same images/env).
+# Config lives in roam/.env (copy roam/.env.example). Never commit the real .env.
+
+name: outpost-postiz
+
+x-restart: &restart
+  restart: unless-stopped   # Postiz is a scheduler — keep it always-on.
+
+services:
+  postiz:
+    <<: *restart
+    image: ghcr.io/gitroomhq/postiz-app:latest   # later: our reskin build
+    depends_on:
+      postiz-postgres: { condition: service_healthy }
+      postiz-redis:    { condition: service_healthy }
+      temporal:        { condition: service_started }
+    ports:
+      - "${POSTIZ_HTTP_PORT:-4007}:5000"   # front this with TLS at social.roam…
+    environment:
+      MAIN_URL: "${MAIN_URL}"
+      FRONTEND_URL: "${FRONTEND_URL}"
+      NEXT_PUBLIC_BACKEND_URL: "${NEXT_PUBLIC_BACKEND_URL}"
+      BACKEND_INTERNAL_URL: "http://localhost:3000"
+      JWT_SECRET: "${JWT_SECRET}"
+      DATABASE_URL: "postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postiz-postgres:5432/${POSTGRES_DB}"
+      REDIS_URL: "redis://postiz-redis:6379"
+      TEMPORAL_ADDRESS: "temporal:7233"
+      DISABLE_REGISTRATION: "${DISABLE_REGISTRATION:-true}"
+      STORAGE_PROVIDER: "${STORAGE_PROVIDER:-local}"
+      UPLOAD_DIRECTORY: "/uploads"
+      NEXT_PUBLIC_UPLOAD_DIRECTORY: "/uploads"
+    volumes:
+      - postiz-config:/config/
+      - postiz-uploads:/uploads/
+    networks: [postiz, temporal]
+
+  postiz-postgres:
+    <<: *restart
+    image: postgres:17-alpine
+    environment:
+      POSTGRES_USER: "${POSTGRES_USER}"
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD}"
+      POSTGRES_DB: "${POSTGRES_DB}"
+    volumes:
+      - postiz-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [postiz]
+
+  postiz-redis:
+    <<: *restart
+    image: redis:7.2
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    volumes:
+      - postiz-redis:/data
+    networks: [postiz]
+
+  # ── Temporal (scheduler) — Postgres visibility, no Elasticsearch ──
+  temporal-postgresql:
+    <<: *restart
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: "${TEMPORAL_PG_USER:-temporal}"
+      POSTGRES_PASSWORD: "${TEMPORAL_PG_PASSWORD:-temporal}"
+    volumes:
+      - temporal-postgres:/var/lib/postgresql/data
+    networks: [temporal]
+
+  temporal:
+    <<: *restart
+    image: temporalio/auto-setup:1.28.1
+    depends_on: [temporal-postgresql]
+    environment:
+      DB: "postgres12"
+      DB_PORT: "5432"
+      POSTGRES_SEEDS: "temporal-postgresql"
+      POSTGRES_USER: "${TEMPORAL_PG_USER:-temporal}"
+      POSTGRES_PWD: "${TEMPORAL_PG_PASSWORD:-temporal}"
+      DBNAME: "temporal"
+      VISIBILITY_DBNAME: "temporal_visibility"
+      ENABLE_ES: "false"   # Postgres visibility — skips the heavy ES node.
+    ports:
+      - "7233:7233"
+    networks: [temporal]
+
+networks:
+  postiz:
+  temporal:
+
+volumes:
+  postiz-config:
+  postiz-uploads:
+  postiz-postgres:
+  postiz-redis:
+  temporal-postgres:
