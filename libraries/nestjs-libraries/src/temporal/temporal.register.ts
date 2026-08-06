@@ -35,8 +35,12 @@ export class TemporalRegister implements OnModuleInit {
         await connection.operatorService.addSearchAttributes({
           namespace: process.env.TEMPORAL_NAMESPACE || 'default',
           searchAttributes: missingAttributes.reduce((all, current) => {
+            // ROAM: 2 = KEYWORD (IndexedValueType). These are exact-match IDs,
+            // and KEYWORD avoids the 3-Text-attribute cap in the SQL visibility
+            // store that the auto-setup image's legacy Text defaults exhaust.
+            // Must match the KEYWORD type in temporal.search.attribute.ts.
             // @ts-ignore
-            all[current] = 1;
+            all[current] = 2;
             return all;
           }, {}),
         });
